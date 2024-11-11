@@ -6,8 +6,9 @@ const ChatBot = ({ patient }) => {
   const [question, setQuestion] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false); // For recording animation
 
-  // Speech recognition setup (optional)
+  // Speech recognition setup
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const recognition = new SpeechRecognition();
 
@@ -18,23 +19,26 @@ const ChatBot = ({ patient }) => {
 
   const handleVoiceInput = () => {
     setIsListening(true);
+    setIsRecording(true);
     recognition.start();
   };
 
   const handleStopVoiceInput = () => {
     setIsListening(false);
+    setIsRecording(false);
     recognition.stop();
   };
 
   recognition.addEventListener('result', (event) => {
     const transcript = event.results[0][0].transcript;
     setQuestion(transcript);
-    sendMessage(transcript);
+    sendMessage(transcript); // Automatically send message after recording
   });
 
   recognition.addEventListener('error', (event) => {
     console.error("Voice recognition error:", event.error);
     setIsListening(false);
+    setIsRecording(false);
   });
 
   // Function to send a message to the chatbot
@@ -43,58 +47,18 @@ const ChatBot = ({ patient }) => {
       const response = await axios.post(
         `https://microland-hackaton-backend.onrender.com/ask`,
         { question: message },
-        { withCredentials: true } // This ensures the session cookie is sent
-    );
+        { withCredentials: true } 
+      );
       const answer = response.data.answer;
       
       setChatHistory([...chatHistory, { question: message, answer }]);
       setQuestion('');
 
-      // Check if the chatbot's response includes an appointment confirmation
       if (answer.includes("appointment with")) {
         bookAppointmentFromResponse(answer);
       }
-
-      setIsListening(false);
     } catch (error) {
       console.error('Error asking question:', error);
-      setIsListening(false);
-    }
-  };
-
-  // Function to parse the chatbot's response and call the booking API
-  const bookAppointmentFromResponse = (answer) => {
-    // Extract details from the chatbot's answer using regex or simple string parsing
-    const doctorNameMatch = answer.match(/Dr\. ([A-Za-z\s]+) \((ID: MLD\d+)\)/);
-    const specialityMatch = answer.match(/a ([A-Za-z]+) in Nagpur/);
-    const timeSlotMatch = answer.match(/from (\d{1,2}:\d{2} (?:AM|PM) \d{1,2}:\d{2} (?:AM|PM))/);
-    const conditionMatch = answer.match(/for your ([A-Za-z\s]+)/);
-
-    if (doctorNameMatch && specialityMatch && timeSlotMatch && conditionMatch) {
-      const doctorName = doctorNameMatch[1];
-      const doctorID = doctorNameMatch[2];
-      const speciality = specialityMatch[1];
-      const timeSlot = timeSlotMatch[1];
-      const condition = conditionMatch[1];
-      
-      const appointmentDetails = {
-        patientName: patient.name,
-        doctorName,
-        doctorID,
-        speciality,
-        location: "Nagpur",
-        timeSlot,
-        condition
-      };
-
-      // Call the backend to save the appointment
-      axios.post('https://microland-hackaton-backend.onrender.com/save-appointment', appointmentDetails)
-        .then((res) => {
-          console.log(res.data.message);
-        })
-        .catch((error) => {
-          console.error('Error saving appointment:', error);
-        });
     }
   };
 
@@ -123,6 +87,9 @@ const ChatBot = ({ patient }) => {
           onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
         />
         <button onClick={handleSendMessage} className="icon-button">Send</button>
+        <button onClick={isListening ? handleStopVoiceInput : handleVoiceInput} className="voice-button">
+          {isRecording ? <span className="recording-indicator"></span> : '🎤'}
+        </button>
       </div>
 
       <style jsx>{`
@@ -188,6 +155,7 @@ const ChatBot = ({ patient }) => {
         .input-container {
           display: flex;
           width: 100%;
+          align-items: center;
         }
 
         input {
@@ -212,6 +180,41 @@ const ChatBot = ({ patient }) => {
 
         .icon-button:hover {
           background-color: #00897b;
+        }
+
+        .voice-button {
+          background-color: ${isListening ? '#FF6B6B' : '#4db6ac'};
+          color: #ffffff;
+          border: none;
+          padding: 10px;
+          margin-left: 5px;
+          border-radius: 50%;
+          font-size: 18px;
+          cursor: pointer;
+          transition: background-color 0.3s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .recording-indicator {
+          width: 10px;
+          height: 10px;
+          background-color: #FF6B6B;
+          border-radius: 50%;
+          animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+          0% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.3);
+          }
+          100% {
+            transform: scale(1);
+          }
         }
       `}</style>
     </div>
