@@ -43,8 +43,8 @@ const ChatBot = ({ patient }) => {
       const response = await axios.post(
         `https://microland-hackaton-backend.onrender.com/ask`,
         { question: message },
-        { withCredentials: true }
-      );
+        { withCredentials: true } // This ensures the session cookie is sent
+    );
       const answer = response.data.answer;
       
       setChatHistory([...chatHistory, { question: message, answer }]);
