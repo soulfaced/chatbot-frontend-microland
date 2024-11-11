@@ -1,12 +1,13 @@
 "use client";
 import { useState } from 'react';
 import axios from 'axios';
+import { marked } from 'marked';
 
 const ChatBot = ({ patient }) => {
   const [question, setQuestion] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const [isListening, setIsListening] = useState(false);
-  const [isRecording, setIsRecording] = useState(false); // For recording animation
+  const [isRecording, setIsRecording] = useState(false);
 
   // Speech recognition setup
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -32,7 +33,7 @@ const ChatBot = ({ patient }) => {
   recognition.addEventListener('result', (event) => {
     const transcript = event.results[0][0].transcript;
     setQuestion(transcript);
-    sendMessage(transcript); // Automatically send message after recording
+    sendMessage(transcript);
   });
 
   recognition.addEventListener('error', (event) => {
@@ -47,7 +48,7 @@ const ChatBot = ({ patient }) => {
       const response = await axios.post(
         `https://microland-hackaton-backend.onrender.com/ask`,
         { question: message },
-        { withCredentials: true } 
+        { withCredentials: true }
       );
       const answer = response.data.answer;
       
@@ -67,6 +68,12 @@ const ChatBot = ({ patient }) => {
     sendMessage(question);
   };
 
+  // Helper function to format messages with Markdown
+  const renderFormattedText = (text) => {
+    const html = marked(text); // Parse Markdown to HTML
+    return <div dangerouslySetInnerHTML={{ __html: html }} />;
+  };
+
   return (
     <div className="chat-container">
       <h1>Healthcare Chatbot</h1>
@@ -74,7 +81,7 @@ const ChatBot = ({ patient }) => {
         {chatHistory.map((entry, index) => (
           <div key={index} className="message">
             {entry.question && <div className="user-message bubble"><p><strong>You:</strong> {entry.question}</p></div>}
-            {entry.answer && <div className="bot-message bubble">{entry.answer}</div>}
+            {entry.answer && <div className="bot-message bubble">{renderFormattedText(entry.answer)}</div>}
           </div>
         ))}
       </div>
@@ -198,8 +205,8 @@ const ChatBot = ({ patient }) => {
         }
 
         .recording-indicator {
-          width: 10px;
-          height: 10px;
+          width: 12px;
+          height: 12px;
           background-color: #FF6B6B;
           border-radius: 50%;
           animation: pulse 1s infinite;
@@ -210,7 +217,7 @@ const ChatBot = ({ patient }) => {
             transform: scale(1);
           }
           50% {
-            transform: scale(1.3);
+            transform: scale(1.4);
           }
           100% {
             transform: scale(1);
